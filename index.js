@@ -37,6 +37,7 @@ async function run() {
     app.post("/lessons", async (req, res) => {
       const lesson = req.body;
       const result = await lessonCollection.insertOne(lesson);
+      return res.send(result)
     });
 
     // Lesson Related API----<<<
