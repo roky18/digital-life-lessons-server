@@ -32,12 +32,24 @@ async function run() {
     const lessonCollection = db.collection("lesson");
 
     // Lesson Related API---->>>
-    app.get("/lessons", async (req, res) => {});
+    app.get("/lessons", async (req, res) => {
+      const query = {};
+      const { email } = req.query;
+      if (email) {
+        query.lessonerEmail = email;
+      }
+      const cursor = lessonCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
     app.post("/lessons", async (req, res) => {
-      const lesson = req.body;
+      const lesson = {
+        ...req.body,
+        createdAt: new Date(),
+      };
       const result = await lessonCollection.insertOne(lesson);
-      return res.send(result)
+      return res.send(result);
     });
 
     // Lesson Related API----<<<
