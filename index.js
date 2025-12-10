@@ -67,7 +67,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("Digital Life Lessoning........!");
+  res.send("Digital Life Lessoning.........!");
 });
 
 app.listen(port, () => {
