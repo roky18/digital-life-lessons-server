@@ -3,7 +3,7 @@ const cors = require("cors");
 const app = express();
 require("dotenv").config();
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 const port = process.env.PORT || 3000;
 
@@ -38,7 +38,9 @@ async function run() {
       if (email) {
         query.lessonerEmail = email;
       }
-      const cursor = lessonCollection.find(query);
+
+      const option = { sort: { createdAt: -1 } };
+      const cursor = lessonCollection.find(query, option);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -50,6 +52,13 @@ async function run() {
       };
       const result = await lessonCollection.insertOne(lesson);
       return res.send(result);
+    });
+
+    app.delete("/lessons/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await lessonCollection.deleteOne(query);
+      res.send(result);
     });
 
     // Lesson Related API----<<<
