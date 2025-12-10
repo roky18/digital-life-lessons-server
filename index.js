@@ -5,6 +5,8 @@ require("dotenv").config();
 
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
+const stripe = require("stripe")(process.env.STRIPE_KEY);
+
 const port = process.env.PORT || 3000;
 
 // MiddleWare--->
@@ -39,7 +41,20 @@ async function run() {
       user.accessLevel = "free";
       user.createdAt = new Date();
 
+      const email = user.email;
+      const userExists = await usersCollection.findOne({ email });
+
+      if (userExists) {
+        return res.send({ message: "user already exists" });
+      }
       const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    app.get("/users/email/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await usersCollection.findOne({ email });
+      res.send(result);
     });
 
     //User Related API----<<<
@@ -55,6 +70,13 @@ async function run() {
       const option = { sort: { createdAt: -1 } };
       const cursor = lessonCollection.find(query, option);
       const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get("/lessons/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await lessonCollection.findOne(query);
       res.send(result);
     });
 
@@ -75,6 +97,36 @@ async function run() {
     });
 
     // Lesson Related API----<<<
+
+    // Stripe Related API---->>>
+    app.post("/create-checkout-session", async (req, res) => {
+      const paymentInfo = req.body;
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            price_data: {
+              currency: "USD",
+              unit_amount: 150000,
+              product_data: {
+                name: paymentInfo.userName,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        customer_email: paymentInfo.userEmail,
+        mode: "payment",
+        metadata: {
+          userId: paymentInfo.userId,
+        },
+        success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success`,
+        cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-canceled`,
+      });
+      console.log(session);
+      res.send({ url: session.url });
+    });
+
+    // Stripe Related API----<<<
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
