@@ -29,7 +29,20 @@ async function run() {
     await client.connect();
 
     const db = client.db("digital_life_lessons_db");
+    const usersCollection = db.collection("users");
     const lessonCollection = db.collection("lesson");
+
+    //User Related API---->>>
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      user.role = "user";
+      user.accessLevel = "free";
+      user.createdAt = new Date();
+
+      const result = await usersCollection.insertOne(user);
+    });
+
+    //User Related API----<<<
 
     // Lesson Related API---->>>
     app.get("/lessons", async (req, res) => {
