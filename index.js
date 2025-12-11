@@ -99,6 +99,11 @@ async function run() {
     // Lesson Related API----<<<
 
     // Stripe Related API---->>>
+    // after payment--->
+    app.post("/create-checkout-session", async (req, res) => {
+      
+    })
+    // after payment---<
     app.post("/create-checkout-session", async (req, res) => {
       const paymentInfo = req.body;
       const session = await stripe.checkout.sessions.create({
