@@ -100,9 +100,17 @@ async function run() {
 
     // Stripe Related API---->>>
     // after payment--->
-    app.post("/create-checkout-session", async (req, res) => {
-      
-    })
+    app.patch("/users/make-premium/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const update = {
+        $set: {
+          accessLevel: "premium",
+        },
+      };
+      const result = await usersCollection.updateOne(query, update);
+      res.send(result);
+    });
     // after payment---<
     app.post("/create-checkout-session", async (req, res) => {
       const paymentInfo = req.body;
@@ -124,7 +132,8 @@ async function run() {
         metadata: {
           userId: paymentInfo.userId,
         },
-        success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success`,
+        success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?email=${paymentInfo.userEmail}`,
+
         cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-canceled`,
       });
       console.log(session);
