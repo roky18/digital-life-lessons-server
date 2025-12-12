@@ -33,6 +33,7 @@ async function run() {
     const db = client.db("digital_life_lessons_db");
     const usersCollection = db.collection("users");
     const lessonCollection = db.collection("lesson");
+    const reportsCollection = db.collection("lessonsReports");
 
     //User Related API---->>>
     app.post("/users", async (req, res) => {
@@ -124,6 +125,32 @@ async function run() {
       res.send(result);
     });
 
+    // likee---->>
+    app.patch("/lessons/like/:id", async (req, res) => {
+      const id = req.params.id;
+      const userEmail = req.body.email;
+
+      const lesson = await lessonCollection.findOne({ _id: new ObjectId(id) });
+
+      let update = {};
+      if (!lesson.likes.includes(userEmail)) {
+        update = {
+          $push: { likes: userEmail },
+          $inc: { likesCount: 1 },
+        };
+      } else {
+        update = {
+          $pull: { likes: userEmail },
+          $inc: { likesCount: -1 },
+        };
+      }
+      const result = await lessonCollection.updateOne(
+        { _id: new ObjectId(id) },
+        update
+      );
+      res.send(result);
+    });
+
     app.delete("/lessons/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -131,7 +158,81 @@ async function run() {
       res.send(result);
     });
 
+    // favorite----->>
+    app.patch("/lessons/favorite/:id", async (req, res) => {
+      const id = req.params.id;
+      const userEmail = req.body.email;
+
+      const lesson = await lessonCollection.findOne({ _id: new ObjectId(id) });
+
+      let update = {};
+      if (!lesson.favorites.includes(userEmail)) {
+        update = {
+          $push: { favorites: userEmail },
+          $inc: { favoriteCount: 1 },
+        };
+      } else {
+        update = {
+          $pull: { favorites: userEmail },
+          $inc: { favoriteCount: -1 },
+        };
+      }
+      const result = await lessonCollection.updateOne(
+        { _id: new ObjectId(id) },
+        update
+      );
+
+      res.send(result);
+    });
+
+    // coment----->>>
+    app.patch("/lessons/comment/:id", async (req, res) => {
+      const id = req.params.id;
+      const comment = req.body;
+      const result = await lessonCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $push: { comments: comment } }
+      );
+
+      res.send(result);
+    });
+
     // Lesson Related API----<<<
+    // Report Related API---->>>
+    app.post("/report", async (req, res) => {
+      try {
+        const { lessonId, reporterUserId, reason, message } = req.body;
+
+        if (!lessonId || !reporterUserId || !reason) {
+          return res.status(400).send({
+            message: "lessonId, reporterUserId and reason are required",
+          });
+        }
+
+        const report = {
+          lessonId,
+          reporterUserId,
+          reason,
+          message: message || "",
+          timestamp: new Date(),
+        };
+
+        const result = await reportsCollection.insertOne(report);
+
+        res.send({
+          success: true,
+          message: "Report submitted successfully!",
+          reportId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Report Error:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Internal Server Error" });
+      }
+    });
+
+    // Report Related API----<<<
 
     // Stripe Related API---->>>
     app.post("/create-checkout-session", async (req, res) => {
