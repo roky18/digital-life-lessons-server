@@ -51,11 +51,37 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/users", async (req, res) => {
+      const query = {};
+      const { email } = req.query;
+      if (email) {
+        query.email = email;
+      }
+      const option = { sort: { createdAt: -1 } };
+      const cursor = usersCollection.find(query, option);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     app.get("/users/email/:email", async (req, res) => {
       const email = req.params.email;
       const result = await usersCollection.findOne({ email });
       res.send(result);
     });
+
+    // after payment--->
+    app.patch("/users/make-premium/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const update = {
+        $set: {
+          accessLevel: "premium",
+        },
+      };
+      const result = await usersCollection.updateOne(query, update);
+      res.send(result);
+    });
+    // after payment---<
 
     //User Related API----<<<
 
@@ -89,6 +115,15 @@ async function run() {
       return res.send(result);
     });
 
+    app.patch("/lessons/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedLesson = req.body;
+      const query = { _id: new ObjectId(id) };
+      const update = { $set: updatedLesson };
+      const result = await lessonCollection.updateOne(query, update);
+      res.send(result);
+    });
+
     app.delete("/lessons/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -99,19 +134,6 @@ async function run() {
     // Lesson Related API----<<<
 
     // Stripe Related API---->>>
-    // after payment--->
-    app.patch("/users/make-premium/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { email };
-      const update = {
-        $set: {
-          accessLevel: "premium",
-        },
-      };
-      const result = await usersCollection.updateOne(query, update);
-      res.send(result);
-    });
-    // after payment---<
     app.post("/create-checkout-session", async (req, res) => {
       const paymentInfo = req.body;
       const session = await stripe.checkout.sessions.create({
