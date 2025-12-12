@@ -8,10 +8,40 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const stripe = require("stripe")(process.env.STRIPE_KEY);
 
 const port = process.env.PORT || 3000;
+const crypto = require("crypto");
+
+const admin = require("firebase-admin");
+// const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
+//   "utf8"
+// );
+// const serviceAccount = JSON.parse(decoded);
+
+const serviceAccount = require("./digital-life-lessons.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 // MiddleWare--->
 app.use(express.json());
 app.use(cors());
+// ----------------
+const verifyFBToken = async (req, res, next) => {
+  const token = req.headers.authorization;
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  try {
+    const idToken = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    console.log("decoded", decoded);
+    req.decoded_email = decoded.email;
+    next();
+  } catch (error) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+};
+
 // MiddleWare---<
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.wxnpgmj.mongodb.net/?appName=Cluster0`;
@@ -126,7 +156,19 @@ async function run() {
     });
 
     // likee---->>
-    app.patch("/lessons/like/:id", async (req, res) => {
+    app.get("/like", async (req, res) => {
+      const email = req.query.email;
+      if (!email) return res.status(400).send({ message: "Email required" });
+
+      const result = await lessonCollection
+        .find({ likes: email })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(result);
+    });
+
+    app.patch("/lessons/like/:id", verifyFBToken, async (req, res) => {
       const id = req.params.id;
       const userEmail = req.body.email;
 
@@ -159,6 +201,18 @@ async function run() {
     });
 
     // favorite----->>
+    app.get("/favorites", async (req, res) => {
+      const email = req.query.email;
+      if (!email) return res.status(400).send({ message: "Email required" });
+
+      const result = await lessonCollection
+        .find({ favorites: email })
+        .sort({ createdAt: -1 })
+        .toArray();
+
+      res.send(result);
+    });
+
     app.patch("/lessons/favorite/:id", async (req, res) => {
       const id = req.params.id;
       const userEmail = req.body.email;
