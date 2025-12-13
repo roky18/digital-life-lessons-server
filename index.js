@@ -100,6 +100,28 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/lessons/top-creators", async (req, res) => {
+      try {
+        const topCreators = await lessonCollection
+          .aggregate([
+            {
+              $group: {
+                _id: "$lessonerEmail",
+                name: { $first: "$lessonerName" },
+                lessonCount: { $sum: 1 },
+              },
+            },
+            { $sort: { lessonCount: -1 } },
+          ])
+          .toArray();
+
+        res.send(topCreators);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
     // after payment--->
     app.patch("/users/make-premium/:email", async (req, res) => {
       const email = req.params.email;
@@ -201,7 +223,7 @@ async function run() {
     });
 
     // favorite----->>
-    app.get("/favorites", async (req, res) => {
+    app.get("/favorites", verifyFBToken, async (req, res) => {
       const email = req.query.email;
       if (!email) return res.status(400).send({ message: "Email required" });
 
@@ -213,7 +235,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/lessons/favorite/:id", async (req, res) => {
+    app.patch("/lessons/favorite/:id", verifyFBToken, async (req, res) => {
       const id = req.params.id;
       const userEmail = req.body.email;
 
@@ -289,7 +311,7 @@ async function run() {
     // Report Related API----<<<
 
     // Stripe Related API---->>>
-    app.post("/create-checkout-session", async (req, res) => {
+    app.post("/create-checkout-session", verifyFBToken, async (req, res) => {
       const paymentInfo = req.body;
       const session = await stripe.checkout.sessions.create({
         line_items: [
