@@ -16,8 +16,6 @@ const decoded = Buffer.from(process.env.FB_SERVICE_KEY, "base64").toString(
 );
 const serviceAccount = JSON.parse(decoded);
 
-
-
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -40,6 +38,18 @@ const verifyFBToken = async (req, res, next) => {
   } catch (error) {
     return res.status(401).send({ message: "unauthorized access" });
   }
+};
+
+const verifyAdmin = async (req, res, next) => {
+  const email = req.decoded_email;
+
+  const user = await usersCollection.findOne({ email });
+
+  if (!user || user.role !== "admin") {
+    return res.status(403).send({ message: "forbidden access" });
+  }
+
+  next();
 };
 
 // MiddleWare---<
@@ -82,7 +92,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users", async (req, res) => {
+    app.get("/users", verifyFBToken, verifyAdmin, async (req, res) => {
       const query = {};
       const { email } = req.query;
       if (email) {
@@ -215,7 +225,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/lessons/:id", async (req, res) => {
+    app.delete("/lessons/:id", verifyFBToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await lessonCollection.deleteOne(query);
@@ -223,7 +233,7 @@ async function run() {
     });
 
     // favorite----->>
-    app.get("/favorites", verifyFBToken, async (req, res) => {
+    app.get("/favorites", async (req, res) => {
       const email = req.query.email;
       if (!email) return res.status(400).send({ message: "Email required" });
 
@@ -306,6 +316,16 @@ async function run() {
           .status(500)
           .send({ success: false, message: "Internal Server Error" });
       }
+    });
+
+    app.get("/reports", verifyFBToken, verifyAdmin, async (req, res) => {
+      const query = {};
+
+      const reports = await reportsCollection
+        .find(query)
+        .sort({ timestamp: -1 })
+        .toArray();
+      res.send(reports);
     });
 
     // Report Related API----<<<
