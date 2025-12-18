@@ -32,24 +32,11 @@ const verifyFBToken = async (req, res, next) => {
   try {
     const idToken = token.split(" ")[1];
     const decoded = await admin.auth().verifyIdToken(idToken);
-    console.log("decoded", decoded);
     req.decoded_email = decoded.email;
     next();
   } catch (error) {
     return res.status(401).send({ message: "unauthorized access" });
   }
-};
-
-const verifyAdmin = async (req, res, next) => {
-  const email = req.decoded_email;
-
-  const user = await usersCollection.findOne({ email });
-
-  if (!user || user.role !== "admin") {
-    return res.status(403).send({ message: "forbidden access" });
-  }
-
-  next();
 };
 
 // MiddleWare---<
@@ -74,6 +61,18 @@ async function run() {
     const usersCollection = db.collection("users");
     const lessonCollection = db.collection("lesson");
     const reportsCollection = db.collection("lessonsReports");
+
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded_email;
+
+      const user = await usersCollection.findOne({ email });
+
+      if (!user || user.role !== "admin") {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
+      next();
+    };
 
     //User Related API---->>>
     app.post("/users", async (req, res) => {
@@ -147,6 +146,80 @@ async function run() {
     // after payment---<
 
     //User Related API----<<<
+    //Admin Related API---->>>
+
+    app.get("/admin/users", verifyFBToken, verifyAdmin, async (req, res) => {
+      try {
+        const users = await usersCollection
+          .aggregate([
+            {
+              $lookup: {
+                from: "lesson",
+                localField: "email",
+                foreignField: "lessonerEmail",
+                as: "userLessons",
+              },
+            },
+            {
+              $addFields: {
+                totalLessons: { $size: "$userLessons" },
+              },
+            },
+            {
+              $project: {
+                userLessons: 0,
+              },
+            },
+          ])
+          .toArray();
+
+        res.send(users);
+      } catch (error) {
+        res.status(500).send({ message: "Server error" });
+      }
+    });
+
+    app.patch(
+      "/users/make-admin/:id",
+      verifyFBToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { role: "admin" } }
+        );
+
+        res.send(result);
+      }
+    );
+
+    app.patch(
+      "/users/remove-admin/:id",
+      verifyFBToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const result = await usersCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { role: "user" } }
+        );
+        res.send(result);
+      }
+    );
+
+    app.delete("/users/:id", verifyFBToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+
+      const result = await usersCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+
+      res.send(result);
+    });
+
+    //Admin Related API----<<<
 
     // Lesson Related API---->>>
     app.get("/lessons", async (req, res) => {
@@ -328,6 +401,13 @@ async function run() {
       res.send(reports);
     });
 
+    app.delete("/reports/:id", verifyFBToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { lessonId: id };
+      const result = await reportsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // Report Related API----<<<
 
     // Stripe Related API---->>>
@@ -355,7 +435,6 @@ async function run() {
 
         cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-canceled`,
       });
-      console.log(session);
       res.send({ url: session.url });
     });
 
