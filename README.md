@@ -38,7 +38,7 @@ Follow these steps to run the server locally:
 
 1. **Clone the Repo:**
    ```bash
-   git clone [https://github.com/roky18/digital-life-lessons-server.git](https://github.com/roky18/digital-life-lessons-server.git)
+   git clone [https://github.com/roky18/digital-life-lessons-server.git]
    cd digital-life-lessons-server
 ```
 ```
