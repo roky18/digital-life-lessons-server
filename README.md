@@ -67,5 +67,9 @@ node index.js
 ```
 👤 Author
 MD RAKIBUL ISLAM ROKY
+- ** Email: roky18bd@gmail.com
+- ** LinkedIn: https://linkedin.com/in/roky18
+- ** 📞 Mobile: +8801727020930
 
+  
 ✨ Digital Life Lessons — Preserve wisdom. Learn from life. Grow together.
